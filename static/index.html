@@ -46,14 +46,9 @@
                 const result = await response.json();
 
                 if (result.message) {
-                    if (result.output_file) {
-                        progressText.textContent = 'Status: Završeno!';
-                        progressBar.style.width = '100%';
-                        downloadLink.classList.remove('hidden');
-                    } else {
-                        progressText.textContent = 'Status: Scraping u toku...';
-                        checkProgress();
-                    }
+                    progressText.textContent = 'Status: Završeno!';
+                    progressBar.style.width = '100%';
+                    downloadLink.classList.remove('hidden');
                 } else {
                     alert(result.error || 'Greška prilikom pokretanja scrapinga.');
                 }
