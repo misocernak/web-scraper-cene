@@ -1,10 +1,7 @@
 from flask import Flask, request, jsonify, send_file
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from bs4 import BeautifulSoup
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 import os
 import uuid
 import time
@@ -28,30 +25,15 @@ SITES = {
 # Globalne promenljive za praćenje progress-a
 scrape_progress = {'status': 'idle', 'progress': 0, 'total': 0, 'output_file': None}
 
-def setup_driver():
-    logger.info("Pokrećem ChromeDriver...")
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
-    try:
-        from chromedriver_binary import chromedriver_filename
-        service = Service(chromedriver_filename)
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        logger.info("ChromeDriver uspešno pokrenut.")
-        return driver
-    except Exception as e:
-        logger.error(f"Greška prilikom pokretanja ChromeDriver-a: {str(e)}")
-        raise
-
-def scrape_price(driver, site, url_template, search_term, selector):
+def scrape_price(site, url_template, search_term, selector):
     try:
         url = url_template.format(search_term.replace(' ', '+'))
         logger.info(f"Scrapujem {site} za uređaj: {search_term}, URL: {url}")
-        driver.get(url)
-        time.sleep(5)  # Povećano čekanje za stabilnost
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=5)
+        soup = BeautifulSoup(response.text, 'html.parser')
         price_element = soup.select_one(selector)
         if price_element:
             price = price_element.text.strip().replace('RSD', '').replace('din', '').replace(',', '').replace('.', '').strip()
@@ -68,7 +50,6 @@ def scrape_prices(devices):
     global scrape_progress
     logger.info(f"Pokrećem scraping za {len(devices)} uređaja: {devices}")
     try:
-        driver = setup_driver()
         results = []
         
         scrape_progress['total'] = len(devices)
@@ -78,15 +59,13 @@ def scrape_prices(devices):
         for device in devices:
             device_result = {'Uređaj': device}
             for site, config in SITES.items():
-                price = scrape_price(driver, site, config['url_template'], device, config['selector'])
+                price = scrape_price(site, config['url_template'], device, config['selector'])
                 device_result[site] = price if price else 'N/A'
-            
+                time.sleep(1)  # Pauza između zahteva da izbegnemo blokiranje
             results.append(device_result)
             scrape_progress['progress'] += 1
             logger.info(f"Završeno scrapovanje za uređaj: {device}, napredak: {scrape_progress['progress']}/{scrape_progress['total']}")
 
-        driver.quit()
-        
         # Kreiranje izlaznog fajla
         output_file = f'output_{uuid.uuid4().hex}.xlsx'
         logger.info(f"Kreiram izlazni fajl: {output_file}")
@@ -132,16 +111,12 @@ def upload_file():
             scrape_progress = {'status': 'running', 'progress': 0, 'total': len(devices), 'output_file': None}
             
             # Sinhrono pokretanje scraping-a
-            logger.info("Pokrećem sinhroni scraping")
-            try:
-                output_file = scrape_prices(devices)
-                return jsonify({'message': 'Scraping završen', 'output_file': output_file})
-            except Exception as e:
-                logger.error(f"Greška prilikom sinhronog scrapinga: {str(e)}")
-                return jsonify({'error': f'Greška prilikom scrapinga: {str(e)}'}), 500
+            logger.info("Pokrećem scraping")
+            output_file = scrape_prices(devices)
+            return jsonify({'message': 'Scraping završen', 'output_file': output_file})
         except Exception as e:
             logger.error(f"Greška prilikom obrade fajla: {str(e)}")
-            return jsonify({'error': f'Greška prilikom obrade fajla: {str(e)}'}), 400
+            return jsonify({'error': f'Greška prilikom scrapinga: {str(e)}'}), 500
     
     logger.error("Fajl nije .xlsx")
     return jsonify({'error': 'Fajl mora biti .xlsx'}), 400
@@ -161,4 +136,4 @@ def download_file():
     return jsonify({'error': 'Fajl nije spreman'}), 400
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))    
