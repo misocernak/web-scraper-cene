@@ -35,9 +35,10 @@ def setup_driver():
     chrome_options.add_argument('--headless')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
     try:
-        driver_path = ChromeDriverManager().install()
-        driver = webdriver.Chrome(executable_path=driver_path, options=chrome_options)
+        from chromedriver_binary import chromedriver_filename
+        driver = webdriver.Chrome(executable_path=chromedriver_filename, options=chrome_options)
         logger.info("ChromeDriver uspešno pokrenut.")
         return driver
     except Exception as e:
