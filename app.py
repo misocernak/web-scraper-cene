@@ -8,7 +8,6 @@ import pandas as pd
 import os
 import uuid
 import time
-from threading import Thread
 import logging
 
 app = Flask(__name__)
@@ -36,7 +35,6 @@ def setup_driver():
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
-    chrome_options.binary_location = os.environ.get('CHROME_BINARY', '/usr/bin/google-chrome')
     try:
         from chromedriver_binary import chromedriver_filename
         service = Service(chromedriver_filename)
@@ -133,10 +131,14 @@ def upload_file():
             # Resetovanje progress-a
             scrape_progress = {'status': 'running', 'progress': 0, 'total': len(devices), 'output_file': None}
             
-            # Pokretanje scraping-a u posebnom thread-u
-            logger.info("Pokrećem scraping thread")
-            Thread(target=scrape_prices, args=(devices,)).start()
-            return jsonify({'message': 'Scraping započet'})
+            # Sinhrono pokretanje scraping-a
+            logger.info("Pokrećem sinhroni scraping")
+            try:
+                output_file = scrape_prices(devices)
+                return jsonify({'message': 'Scraping završen', 'output_file': output_file})
+            except Exception as e:
+                logger.error(f"Greška prilikom sinhronog scrapinga: {str(e)}")
+                return jsonify({'error': f'Greška prilikom scrapinga: {str(e)}'}), 500
         except Exception as e:
             logger.error(f"Greška prilikom obrade fajla: {str(e)}")
             return jsonify({'error': f'Greška prilikom obrade fajla: {str(e)}'}), 400
