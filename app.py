@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_file
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -35,11 +36,11 @@ def setup_driver():
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
-    # Eksplicitno navođenje Chrome binary-ja ako je dostupan
     chrome_options.binary_location = os.environ.get('CHROME_BINARY', '/usr/bin/google-chrome')
     try:
         from chromedriver_binary import chromedriver_filename
-        driver = webdriver.Chrome(executable_path=chromedriver_filename, options=chrome_options)
+        service = Service(chromedriver_filename)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         logger.info("ChromeDriver uspešno pokrenut.")
         return driver
     except Exception as e:
