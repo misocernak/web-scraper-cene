@@ -46,8 +46,14 @@
                 const result = await response.json();
 
                 if (result.message) {
-                    progressText.textContent = 'Status: Scraping u toku...';
-                    checkProgress();
+                    if (result.output_file) {
+                        progressText.textContent = 'Status: Završeno!';
+                        progressBar.style.width = '100%';
+                        downloadLink.classList.remove('hidden');
+                    } else {
+                        progressText.textContent = 'Status: Scraping u toku...';
+                        checkProgress();
+                    }
                 } else {
                     alert(result.error || 'Greška prilikom pokretanja scrapinga.');
                 }
@@ -70,6 +76,9 @@
                     progressBar.style.width = '100%';
                     progressText.textContent = 'Status: Završeno!';
                     downloadLink.classList.remove('hidden');
+                } else if (progress.status === 'error') {
+                    progressText.textContent = 'Status: Greška prilikom scrapinga';
+                    alert('Došlo je do greške prilikom scrapinga. Proverite logove.');
                 }
             } catch (error) {
                 progressText.textContent = 'Greška prilikom provere statusa.';
