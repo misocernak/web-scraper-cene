@@ -8,7 +8,6 @@ import os
 import uuid
 import time
 from threading import Thread
-from webdriver_manager.chrome import ChromeDriverManager
 import logging
 
 app = Flask(__name__)
@@ -50,7 +49,7 @@ def scrape_price(driver, site, url_template, search_term, selector):
         url = url_template.format(search_term.replace(' ', '+'))
         logger.info(f"Scrapujem {site} za uređaj: {search_term}, URL: {url}")
         driver.get(url)
-        time.sleep(2)  # Čekanje da se stranica učita
+        time.sleep(5)  # Povećano čekanje za stabilnost
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         price_element = soup.select_one(selector)
         if price_element:
@@ -59,7 +58,7 @@ def scrape_price(driver, site, url_template, search_term, selector):
             return float(price) if price.replace('.', '').isdigit() else None
         else:
             logger.warning(f"Nije pronađena cena na {site} za selektor: {selector}")
-        return None
+            return None
     except Exception as e:
         logger.error(f"Greška prilikom scrapovanja {site}: {str(e)}")
         return None
